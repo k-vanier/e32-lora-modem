@@ -34,6 +34,14 @@ Yolo TMTC lora 868 RX/TX 500mW 9600 - SX127x v0x12 OK - NET 680D
 identifiants, enregistrent un numéro de réseau commun en EEPROM, puis la LED reste fixe.
 Redémarrer les deux modules.
 
+## Alimentation
+
+Les pics de courant en émission (≈ 120 mA pour le T20, ≈ 500 mA ou plus pour le T30)
+dépassent ce que fournit la sortie 3,3 V de nombreux adaptateurs USB-série (CP2102
+notamment) : le module redémarre et le port USB décroche. Alimenter le module en 5 V
+(broche 5V de l'adaptateur pour le T20, alimentation ≥ 1 A pour le T30), masse commune,
+avec un condensateur de 100 à 470 µF près de VCC.
+
 ## Compilation
 
 [SDCC](https://sdcc.sourceforge.net/) 4.5 :
