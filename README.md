@@ -34,6 +34,11 @@ Yolo TMTC lora 868 RX/TX 500mW 9600 - SX127x v0x12 OK - NET 680D
 identifiants, enregistrent un numéro de réseau commun en EEPROM, puis la LED reste fixe.
 Redémarrer les deux modules.
 
+**Bind par logiciel :** envoyer `+++BIND` seul (sans retour à la ligne) sur l'UART des deux
+modules, à moins de 60 s d'écart. Chacun répond `BIND OK - NET xxxx` et repart directement
+sur le nouveau réseau, sans redémarrage. Sans réponse en 60 s : `BIND : abandon`, l'ancien
+réseau est conservé.
+
 ## Alimentation
 
 Les pics de courant en émission (≈ 120 mA pour le T20, ≈ 500 mA ou plus pour le T30)

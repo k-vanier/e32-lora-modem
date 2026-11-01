@@ -395,12 +395,14 @@ static uint8_t m1_is_low(void)
 
 /* Les deux modules s'échangent leur identifiant (dérivé du n° de série du STM8),
  * puis calculent le même identifiant de réseau : idA ^ idB. */
-static void bind_mode(void)
+#define SOFT_BIND_TIMEOUT_MS 60000U
+
+static void bind_mode(uint8_t soft)
 {
     uint8_t my[4] = {0, 0, 0, 0};
     uint8_t other[4];
     uint8_t got = 0, peer_got = 0, i;
-    uint16_t next_tx = 0, led_t = 0, got_t = 0;
+    uint16_t next_tx = 0, led_t = 0, got_t = 0, start_t;
     uint16_t rnd;
     uint8_t buf[7];
 
@@ -410,8 +412,15 @@ static void bind_mode(void)
 
     uart_puts("BIND : en attente de l'autre module...\r\n");
     sx_start_rx();
+    start_t = millis();
 
     while (!(got && (peer_got || (uint16_t)(millis() - got_t) > 3000))) {
+        if (soft && !got && (uint16_t)(millis() - start_t) >= SOFT_BIND_TIMEOUT_MS) {
+            uart_puts("BIND : abandon, aucun module en face\r\n");
+            PC_ODR &= ~LED_M0;
+            sx_start_rx();
+            return;
+        }
         uint16_t now = millis();
 
         if ((uint16_t)(now - led_t) >= BIND_BLINK_MS) {  /* clignotement rapide */
@@ -471,6 +480,12 @@ static void bind_mode(void)
     uart_puts("BIND OK - NET ");
     uart_puthex(net_id >> 8);
     uart_puthex(net_id & 0xFF);
+    if (soft) {                       /* +++BIND : on repart directement sur le nouveau réseau */
+        uart_puts("\r\n");
+        PC_ODR &= ~LED_M0;
+        sx_start_rx();
+        return;
+    }
     uart_puts(" - redemarrer le module\r\n");
 
     /* LED fixe jusqu'au prochain redémarrage */
@@ -545,7 +560,7 @@ void main(void)
     uart_puts("\r\n");
 
     if (bind)
-        bind_mode();
+        bind_mode(0);
 
     {
         uint8_t i;
@@ -630,7 +645,14 @@ void main(void)
                 rx_tail = (rx_tail + 1) & RX_BUF_MASK;
                 last_rx = now;
             }
-            if (n && (n == PKT_MAX || (uint16_t)(now - last_rx) >= IDLE_GAP_MS)) {
+            if (n == 7 && (uint16_t)(now - last_rx) >= IDLE_GAP_MS &&
+                pkt[3] == '+' && pkt[4] == '+' && pkt[5] == '+' && pkt[6] == 'B' &&
+                pkt[7] == 'I' && pkt[8] == 'N' && pkt[9] == 'D') {
+                /* commande « +++BIND » seule sur l'UART : appairage sans bouton */
+                n = 0;
+                bind_mode(1);
+                last_rx_seq = 0xFF;
+            } else if (n && (n == PKT_MAX || (uint16_t)(now - last_rx) >= IDLE_GAP_MS)) {
                 /* délai aléatoire avant chaque émission : évite que les deux
                  * modules émettent pile en même temps */
                 tx_at = now + (rand8() & 31);
