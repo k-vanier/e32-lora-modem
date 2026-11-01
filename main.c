@@ -9,9 +9,23 @@
  *   UART1 remappé : PA2 TX, PA3 RX — 9600 8N1
  *   M0 : PC5 (LED d'activité)   M1 : PC6 (bouton bind)   AUX : PD0 (haut = prêt)
  *
- * Compilation : sdcc -mstm8 --opt-code-size main.c
+ * Compilation :
+ *   E32-868T30 (ampli externe, 1 W) : sdcc -mstm8 --opt-code-size main.c
+ *   E32-868T20 (SX1276 seul, 100 mW) : sdcc -mstm8 --opt-code-size -DMODEL_T20 main.c
  */
 #include <stdint.h>
+
+#ifdef MODEL_T20
+#define PA_CONFIG  0xFF   /* PA_BOOST, 17 dBm + PA_DAC = 20 dBm (100 mW, max légal à 869,525 MHz : 500 mW) */
+#define PA_DAC     0x87   /* mode +20 dBm du PA_BOOST */
+#define OCP_VALUE  0x3B   /* limite courant 240 mA, nécessaire à 20 dBm */
+#define POWER_STR  "100mW"
+#else
+#define PA_CONFIG  0x8C   /* PA_BOOST 14 dBm -> ~27 dBm (500 mW) après l'ampli du T30 */
+#define PA_DAC     0x84   /* valeur par défaut */
+#define OCP_VALUE  0x2B   /* limite courant 100 mA */
+#define POWER_STR  "500mW"
+#endif
 
 #define REG(a) (*(volatile uint8_t *)(a))
 
@@ -63,6 +77,7 @@
 #define SX_FRF_MSB     0x06
 #define SX_PACONFIG    0x09
 #define SX_OCP         0x0B
+#define SX_PADAC       0x4D
 #define SX_LNA         0x0C
 #define SX_FIFO_PTR    0x0D
 #define SX_FIFO_TXBASE 0x0E
@@ -239,8 +254,9 @@ static void sx_init(void)
     sx_write(SX_FIFO_TXBASE, 0x00);
     sx_write(SX_FIFO_RXBASE, 0x00);
     sx_write(SX_LNA, 0x23);           /* gain max, boost LNA */
-    sx_write(SX_PACONFIG, 0x8C);      /* PA_BOOST 14 dBm -> ~27 dBm (500 mW) après l'ampli du T30 */
-    sx_write(SX_OCP, 0x2B);           /* limite courant 100 mA */
+    sx_write(SX_PACONFIG, PA_CONFIG);
+    sx_write(SX_PADAC, PA_DAC);
+    sx_write(SX_OCP, OCP_VALUE);
     sx_write(SX_MODEMCFG1, 0x82);     /* BW 250 kHz, CR 4/5, en-tête explicite */
     sx_write(SX_MODEMCFG2, 0x74);     /* SF7, CRC activé : ~11 kbit/s */
     sx_write(SX_MODEMCFG3, 0x04);     /* AGC auto */
@@ -520,7 +536,7 @@ void main(void)
         }
         PC_ODR &= ~LED_M0;
     }
-    uart_puts("\r\nYolo TMTC lora 868 RX/TX 500mW 9600 - SX127x v0x");
+    uart_puts("\r\nYolo TMTC lora 868 RX/TX " POWER_STR " 9600 - SX127x v0x");
     uart_puthex(sx_version);
     uart_puts(sx_version == 0x12 ? " OK" : " ERREUR");
     uart_puts(" - NET ");

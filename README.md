@@ -1,4 +1,4 @@
-# Modem série LoRa pour Ebyte E32-868T30
+# Modem série LoRa pour Ebyte E32-868T30 / E32-868T20
 
 Firmware de remplacement pour les modules Ebyte E32 (STM8L151 + SX1276) : un modem
 transparent UART ↔ LoRa, avec appairage (bind), accusés de réception et réémissions.
@@ -7,7 +7,9 @@ transparent UART ↔ LoRa, avec appairage (bind), accusés de réception et ré�
 
 - UART 9600 bauds 8N1 (PA2 = TX, PA3 = RX)
 - LoRa 869,525 MHz, SF7, 250 kHz, CR 4/5 — sous-bande européenne 10 % / 500 mW
-- Puissance : SX1276 à 14 dBm en entrée de l'ampli du T30, soit ~27 dBm (≈ 500 mW, non mesuré)
+- Puissance :
+  - **T30** (`modem.ihx`) : SX1276 à 14 dBm en entrée de l'ampli externe, soit ~27 dBm (≈ 500 mW, non mesuré)
+  - **T20** (`modem_t20.ihx`) : SX1276 seul à 20 dBm (100 mW), maximum de la puce
 - Paquets jusqu'à 120 octets, accusé de réception + jusqu'à 8 réémissions, suppression des doublons
 - Écoute avant d'émettre, délai aléatoire anti-collision
 - Tampon UART entrée 1 Ko, sortie 512 o ; AUX (PD0) bas quand le tampon d'entrée est presque plein
@@ -37,7 +39,8 @@ Redémarrer les deux modules.
 [SDCC](https://sdcc.sourceforge.net/) 4.5 :
 
 ```
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c                    # E32-868T30
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o modem_t20.ihx main.c   # E32-868T20
 ```
 
 ## Flashage (ST-Link V2, SWIM)
@@ -50,12 +53,14 @@ openocd -f interface/stlink.cfg -c "adapter speed 363" -f target/stm8l.cfg \
   -c "init; halt; load_image modem.ihx; reset run; shutdown"
 ```
 
-Les deux modules doivent avoir la même version du firmware.
+Les deux modules doivent avoir la même version du firmware. Un T20 et un T30 peuvent
+communiquer ensemble : seule la puissance change.
 
 ## Fichiers
 
 - `main.c` — firmware du modem
-- `modem.ihx` — image compilée
+- `modem.ihx` — image compilée pour le T30
+- `modem_t20.ihx` — image compilée pour le T20
 - `uartprobe.c` — firmware de test pour trouver les broches UART
 - `tools/stress.ps1` — test de charge entre deux ports COM (PowerShell)
 
@@ -64,4 +69,5 @@ Les deux modules doivent avoir la même version du firmware.
 - Le firmware ne fait pas respecter la limite de 10 % du temps d'émission.
 - Deux rafales simultanées dans les deux sens dépassent le débit radio : utiliser le
   contrôle de flux (AUX → CTS) ou limiter le débit côté PC.
-- Brochage déduit du firmware d'origine ; AUX sur PD0 non vérifié.
+- Brochage déduit du firmware d'origine d'un T30 ; AUX sur PD0 non vérifié. Le brochage
+  du T20 est supposé identique.
