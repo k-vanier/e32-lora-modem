@@ -1,0 +1,13 @@
+# sorties intermédiaires SDCC
+*.asm
+*.lst
+*.rst
+*.rel
+*.sym
+*.map
+*.lk
+*.cdb
+*.adb
+# anciens essais
+main.ihx
+main_ack58.c
