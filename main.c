@@ -1,5 +1,5 @@
 /*
- * Firmware modem série LoRa transparent pour Ebyte E32 (STM8L151 + SX1276), 868 MHz.
+ * Firmware modem série LoRa transparent pour Ebyte E32 (STM8L151 + SX1276/SX1278), 868 ou 433 MHz.
  * Ce qui entre sur l'UART part en radio, ce qui arrive par radio sort sur l'UART.
  *
  * Brochage (déduit du firmware QCZEK) :
@@ -12,6 +12,7 @@
  * Compilation :
  *   E32-868T30 (ampli externe, 1 W) : sdcc -mstm8 --opt-code-size main.c
  *   E32-868T20 (SX1276 seul, 100 mW) : sdcc -mstm8 --opt-code-size -DMODEL_T20 main.c
+ *   E32-433T20 (SX1278, 433 MHz)     : sdcc -mstm8 --opt-code-size -DMODEL_T20 -DBAND_433 main.c
  */
 #include <stdint.h>
 
@@ -93,16 +94,29 @@
 #define SX_SYNCWORD    0x39
 #define SX_VERSION     0x42
 
-#define MODE_LORA_SLEEP 0x80
-#define MODE_STDBY      0x81
-#define MODE_TX         0x83
-#define MODE_RXCONT     0x85
+#ifdef BAND_433
+#define MODE_LF         0x08  /* LowFrequencyModeOn : registres de la bande basse (< 525 MHz) */
+#define LNA_VALUE       0x20  /* gain max (le boost LNA ne concerne que la bande haute) */
+#define BAND_STR        "433"
+#else
+#define MODE_LF         0x00
+#define LNA_VALUE       0x23  /* gain max, boost LNA */
+#define BAND_STR        "868"
+#endif
+#define MODE_LORA_SLEEP (0x80 | MODE_LF)
+#define MODE_STDBY      (0x81 | MODE_LF)
+#define MODE_TX         (0x83 | MODE_LF)
+#define MODE_RXCONT     (0x85 | MODE_LF)
 
 #define IRQ_RXDONE  0x40
 #define IRQ_CRCERR  0x20
 #define IRQ_TXDONE  0x08
 
+#ifdef BAND_433
+#define RF_FRF      0x6C8000UL /* 434,000 MHz, bande ISM 433,05-434,79 MHz, à l'écart du 433,92 très encombré */
+#else
 #define RF_FRF      0xD9619AUL /* 869,525 MHz (sous-bande 10 %, 500 mW max) = Frf * 32 MHz / 2^19 */
+#endif
 #define PKT_MAX     120    /* taille max d'un paquet radio */
 #define IDLE_GAP_MS 5      /* silence UART qui déclenche l'envoi */
 
@@ -253,7 +267,7 @@ static void sx_init(void)
     sx_write(SX_FRF_MSB + 2, (uint8_t)frf);
     sx_write(SX_FIFO_TXBASE, 0x00);
     sx_write(SX_FIFO_RXBASE, 0x00);
-    sx_write(SX_LNA, 0x23);           /* gain max, boost LNA */
+    sx_write(SX_LNA, LNA_VALUE);
     sx_write(SX_PACONFIG, PA_CONFIG);
     sx_write(SX_PADAC, PA_DAC);
     sx_write(SX_OCP, OCP_VALUE);
@@ -551,7 +565,7 @@ void main(void)
         }
         PC_ODR &= ~LED_M0;
     }
-    uart_puts("\r\nYolo TMTC lora 868 RX/TX " POWER_STR " 9600 - SX127x v0x");
+    uart_puts("\r\nYolo TMTC lora " BAND_STR " RX/TX " POWER_STR " 9600 - SX127x v0x");
     uart_puthex(sx_version);
     uart_puts(sx_version == 0x12 ? " OK" : " ERREUR");
     uart_puts(" - NET ");
