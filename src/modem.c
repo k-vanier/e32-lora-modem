@@ -9,10 +9,10 @@
  *   UART1 remappé : PA2 TX, PA3 RX — 9600 8N1
  *   M0 : PC5 (LED d'activité)   M1 : PC6 (bouton bind)   AUX : PD0 (haut = prêt)
  *
- * Compilation :
- *   E32-868T30 (ampli externe, 1 W) : sdcc -mstm8 --opt-code-size main.c
- *   E32-868T20 (SX1276 seul, 100 mW) : sdcc -mstm8 --opt-code-size -DMODEL_T20 main.c
- *   E32-433T20 (SX1278, 433 MHz)     : sdcc -mstm8 --opt-code-size -DMODEL_T20 -DBAND_433 main.c
+ * Compilation (ou tools/build.ps1) :
+ *   E32-868T30 (ampli externe, 1 W) : sdcc -mstm8 --opt-code-size modem.c
+ *   E32-868T20 (SX1276 seul, 100 mW) : sdcc -mstm8 --opt-code-size -DMODEL_T20 modem.c
+ *   E32-433T20 (SX1278, 433 MHz)     : sdcc -mstm8 --opt-code-size -DMODEL_T20 -DBAND_433 modem.c
  */
 #include <stdint.h>
 

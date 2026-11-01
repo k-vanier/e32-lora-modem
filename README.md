@@ -9,9 +9,9 @@ UART ↔ LoRa modem with pairing (bind), acknowledgements and retransmissions.
 
 | Module | Image | Band | Output power |
 |---|---|---|---|
-| E32-868T30 | `modem.ihx` | 869.525 MHz | SX1276 at 14 dBm into the external PA, ~27 dBm (≈ 500 mW, not measured) |
-| E32-868T20 | `modem_t20.ihx` | 869.525 MHz | SX1276 alone at 20 dBm (100 mW), chip maximum |
-| E32-433T20 | `modem_433t20.ihx` | 434.000 MHz | SX1278 alone at 20 dBm (100 mW) |
+| E32-868T30 | `firmware/e32-868t30.ihx` | 869.525 MHz | SX1276 at 14 dBm into the external PA, ~27 dBm (≈ 500 mW, not measured) |
+| E32-868T20 | `firmware/e32-868t20.ihx` | 869.525 MHz | SX1276 alone at 20 dBm (100 mW), chip maximum |
+| E32-433T20 | `firmware/e32-433t20.ihx` | 434.000 MHz | SX1278 alone at 20 dBm (100 mW) |
 
 All three were tested in pairs: 100 % delivery in every stress test, including a 2 KB burst.
 
@@ -59,12 +59,18 @@ to VCC.
 
 ## Building
 
-[SDCC](https://sdcc.sourceforge.net/) 4.5:
+[SDCC](https://sdcc.sourceforge.net/) 4.5, from the repository root:
 
 ```
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c                                 # E32-868T30
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o modem_t20.ihx main.c                 # E32-868T20
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o modem_433t20.ihx main.c   # E32-433T20
+.\tools\build.ps1
+```
+
+Images go to `firmware/`, intermediate files to `build/`. By hand:
+
+```
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -o e32-868t30.ihx src/modem.c                          # E32-868T30
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o e32-868t20.ihx src/modem.c              # E32-868T20
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o e32-433t20.ihx src/modem.c   # E32-433T20
 ```
 
 ## Flashing (ST-Link V2, SWIM)
@@ -72,9 +78,15 @@ sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o modem_433t20
 Wiring: SWIM and RST on the two small pads of the module, plus GND and 3.3 V.
 
 ```
+.\tools\flash.ps1 e32-868t20
+```
+
+The script runs OpenOCD (default path `C:\Users\bsdouille\openocd`, change it with `-OpenOcd`). Equivalent command:
+
+```
 openocd -f interface/stlink.cfg -c "adapter speed 363" -f target/stm8l.cfg \
   -c "reset_config srst_only connect_assert_srst" \
-  -c "init; halt; load_image modem.ihx; reset run; shutdown"
+  -c "init; halt; load_image firmware/e32-868t20.ihx; reset run; shutdown"
 ```
 
 Flashing succeeded only if the output ends with `shutdown command invoked`. On a module still
@@ -86,12 +98,20 @@ can talk to each other (only the power differs). A 433 module cannot talk to an 
 
 ## Files
 
-- `main.c` — modem firmware
-- `modem.ihx` — compiled image for the 868T30
-- `modem_t20.ihx` — compiled image for the 868T20
-- `modem_433t20.ihx` — compiled image for the 433T20
-- `uartprobe.c` — test firmware used to find the UART pins
-- `tools/stress.ps1` — stress test between two COM ports (PowerShell)
+```
+src/
+  modem.c          modem firmware (all three models, selected at build time)
+  uartprobe.c      test firmware used to find the UART pins
+firmware/
+  e32-868t30.ihx   ready-to-flash image for the 868T30
+  e32-868t20.ihx   ready-to-flash image for the 868T20
+  e32-433t20.ihx   ready-to-flash image for the 433T20
+  uartprobe.ihx    UART pin test image
+tools/
+  build.ps1        builds every image
+  flash.ps1        flashes an image with OpenOCD + ST-Link
+  stress.ps1       stress test between two COM ports
+```
 
 ## Limitations
 

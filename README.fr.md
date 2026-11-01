@@ -12,9 +12,9 @@ transparent UART ↔ LoRa, avec appairage (bind), accusés de réception et ré�
   - 868 : 869,525 MHz, sous-bande européenne 10 % / 500 mW
   - 433 : 434,000 MHz (SX1278), à l'écart du 433,92 MHz très encombré
 - Puissance :
-  - **T30** (`modem.ihx`) : SX1276 à 14 dBm en entrée de l'ampli externe, soit ~27 dBm (≈ 500 mW, non mesuré)
-  - **T20** (`modem_t20.ihx`) : SX1276 seul à 20 dBm (100 mW), maximum de la puce
-  - **433T20** (`modem_433t20.ihx`) : SX1278 seul à 20 dBm (100 mW). Attention : la limite
+  - **T30** (`firmware/e32-868t30.ihx`) : SX1276 à 14 dBm en entrée de l'ampli externe, soit ~27 dBm (≈ 500 mW, non mesuré)
+  - **T20** (`firmware/e32-868t20.ihx`) : SX1276 seul à 20 dBm (100 mW), maximum de la puce
+  - **433T20** (`firmware/e32-433t20.ihx`) : SX1278 seul à 20 dBm (100 mW). Attention : la limite
     légale en Europe à 433 MHz est de 10 mW
 - Paquets jusqu'à 120 octets, accusé de réception + jusqu'à 8 réémissions, suppression des doublons
 - Écoute avant d'émettre, délai aléatoire anti-collision
@@ -55,12 +55,18 @@ avec un condensateur de 100 à 470 µF près de VCC.
 
 ## Compilation
 
-[SDCC](https://sdcc.sourceforge.net/) 4.5 :
+[SDCC](https://sdcc.sourceforge.net/) 4.5, depuis la racine du dépôt :
 
 ```
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c                    # E32-868T30
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o modem_t20.ihx main.c   # E32-868T20
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o modem_433t20.ihx main.c   # E32-433T20
+.\tools\build.ps1
+```
+
+Les images vont dans `firmware/`, les fichiers intermédiaires dans `build/`. À la main :
+
+```
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -o e32-868t30.ihx src/modem.c                          # E32-868T30
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o e32-868t20.ihx src/modem.c              # E32-868T20
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o e32-433t20.ihx src/modem.c   # E32-433T20
 ```
 
 ## Flashage (ST-Link V2, SWIM)
@@ -68,9 +74,15 @@ sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o modem_433t20
 Câblage : SWIM et RST sur les deux petits pads du module, plus GND et 3,3 V.
 
 ```
+.\tools\flash.ps1 e32-868t20
+```
+
+Le script lance OpenOCD (chemin par défaut `C:\Users\bsdouille\openocd`, modifiable avec `-OpenOcd`). Commande équivalente :
+
+```
 openocd -f interface/stlink.cfg -c "adapter speed 363" -f target/stm8l.cfg \
   -c "reset_config srst_only connect_assert_srst" \
-  -c "init; halt; load_image modem.ihx; reset run; shutdown"
+  -c "init; halt; load_image firmware/e32-868t20.ihx; reset run; shutdown"
 ```
 
 Les deux modules doivent avoir la même version du firmware. Un T20 et un T30 peuvent
@@ -79,12 +91,20 @@ module 868.
 
 ## Fichiers
 
-- `main.c` — firmware du modem
-- `modem.ihx` — image compilée pour le T30
-- `modem_t20.ihx` — image compilée pour le 868T20
-- `modem_433t20.ihx` — image compilée pour le 433T20
-- `uartprobe.c` — firmware de test pour trouver les broches UART
-- `tools/stress.ps1` — test de charge entre deux ports COM (PowerShell)
+```
+src/
+  modem.c          firmware du modem (les trois modèles, choisis à la compilation)
+  uartprobe.c      firmware de test pour trouver les broches UART
+firmware/
+  e32-868t30.ihx   image prête à flasher pour le 868T30
+  e32-868t20.ihx   image prête à flasher pour le 868T20
+  e32-433t20.ihx   image prête à flasher pour le 433T20
+  uartprobe.ihx    image de test des broches UART
+tools/
+  build.ps1        compile toutes les images
+  flash.ps1        flashe une image avec OpenOCD + ST-Link
+  stress.ps1       test de charge entre deux ports COM
+```
 
 ## Limites
 
