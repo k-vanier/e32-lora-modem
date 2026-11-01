@@ -93,3 +93,9 @@ module 868.
   contrôle de flux (AUX → CTS) ou limiter le débit côté PC.
 - Brochage déduit du firmware d'origine d'un T30 ; AUX sur PD0 non vérifié. Le brochage
   du T20 est supposé identique.
+
+## Références
+
+- E32-868T30D — [manuel de la série E32 (Ebyte, hébergé par LCSC)](https://atta.szlcsc.com/upload/public/pdf/source/20180627/C193456_D0490BB2B626ACDEAAE7032208F51EFF.pdf)
+- E32-868T20D — [manuel utilisateur v1.5 (Ebyte, hébergé sur mikrocontroller.net)](https://www.mikrocontroller.net/attachment/410989/E32-868T20D_Usermanual_EN_v1.5.pdf)
+- E32-433T20D — [fiche produit sur la boutique Tindie d'Ebyte](https://www.tindie.com/products/ebyteiot/e32-433t20d-v8-433mhz-uart-wireless-lora-module/)

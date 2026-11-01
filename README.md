@@ -101,3 +101,9 @@ can talk to each other (only the power differs). A 433 module cannot talk to an 
   (AUX → CTS) or throttle the data rate on the host side.
 - The pinout was derived from a T30's factory firmware; AUX on PD0 is not verified. The
   868T20 and 433T20 work with the same pinout.
+
+## References
+
+- E32-868T30D — [E32 series user manual (Ebyte, hosted by LCSC)](https://atta.szlcsc.com/upload/public/pdf/source/20180627/C193456_D0490BB2B626ACDEAAE7032208F51EFF.pdf)
+- E32-868T20D — [User manual v1.5 (Ebyte, hosted on mikrocontroller.net)](https://www.mikrocontroller.net/attachment/410989/E32-868T20D_Usermanual_EN_v1.5.pdf)
+- E32-433T20D — [Product page on Ebyte's Tindie store](https://www.tindie.com/products/ebyteiot/e32-433t20d-v8-433mhz-uart-wireless-lora-module/)
