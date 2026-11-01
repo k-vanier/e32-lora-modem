@@ -1,69 +1,75 @@
-# Modem série LoRa pour Ebyte E32-868T30 / E32-868T20 / E32-433T20
+# LoRa serial modem for Ebyte E32-868T30 / E32-868T20 / E32-433T20
 
-Firmware de remplacement pour les modules Ebyte E32 (STM8L151 + SX1276) : un modem
-transparent UART ↔ LoRa, avec appairage (bind), accusés de réception et réémissions.
+*[Version française](README.fr.md)*
 
-## Caractéristiques
+Replacement firmware for Ebyte E32 modules (STM8L151 + SX1276/SX1278): a transparent
+UART ↔ LoRa modem with pairing (bind), acknowledgements and retransmissions.
 
-- UART 9600 bauds 8N1 (PA2 = TX, PA3 = RX)
+## Firmware images
+
+| Module | Image | Band | Output power |
+|---|---|---|---|
+| E32-868T30 | `modem.ihx` | 869.525 MHz | SX1276 at 14 dBm into the external PA, ~27 dBm (≈ 500 mW, not measured) |
+| E32-868T20 | `modem_t20.ihx` | 869.525 MHz | SX1276 alone at 20 dBm (100 mW), chip maximum |
+| E32-433T20 | `modem_433t20.ihx` | 434.000 MHz | SX1278 alone at 20 dBm (100 mW) |
+
+All three were tested in pairs: 100 % delivery in every stress test, including a 2 KB burst.
+
+## Features
+
+- UART 9600 baud 8N1 (PA2 = TX, PA3 = RX)
 - LoRa SF7, 250 kHz, CR 4/5
-  - 868 : 869,525 MHz, sous-bande européenne 10 % / 500 mW
-  - 433 : 434,000 MHz (SX1278), à l'écart du 433,92 MHz très encombré
-- Puissance :
-  - **T30** (`modem.ihx`) : SX1276 à 14 dBm en entrée de l'ampli externe, soit ~27 dBm (≈ 500 mW, non mesuré)
-  - **T20** (`modem_t20.ihx`) : SX1276 seul à 20 dBm (100 mW), maximum de la puce
-  - **433T20** (`modem_433t20.ihx`) : SX1278 seul à 20 dBm (100 mW). Attention : la limite
-    légale en Europe à 433 MHz est de 10 mW
-- Paquets jusqu'à 120 octets, accusé de réception + jusqu'à 8 réémissions, suppression des doublons
-- Écoute avant d'émettre, délai aléatoire anti-collision
-- Tampon UART entrée 1 Ko, sortie 512 o ; AUX (PD0) bas quand le tampon d'entrée est presque plein
-- Débit utile mesuré : ~600 octets/s
+  - 868: 869.525 MHz, European sub-band allowing 10 % duty cycle / 500 mW
+  - 433: 434.000 MHz, away from the crowded 433.92 MHz
+- Packets up to 120 bytes, acknowledgement + up to 8 retransmissions, duplicate suppression
+- Listen-before-talk with random backoff
+- UART input buffer 1 KB, output 512 B; AUX (PD0) goes low when the input buffer is nearly full
+- Measured throughput: ~600 bytes/s
 
-Bannière au démarrage (après 5 s) :
+Boot banner (after 5 s):
 
 ```
 Yolo TMTC lora 868 RX/TX 500mW 9600 - SX127x v0x12 OK - NET 680D
 ```
 
-## LED (M0 = PC5) et bouton (M1 = PC6)
+## LED (M0 = PC5) and button (M1 = PC6)
 
-| État | LED |
+| State | LED |
 |---|---|
-| Démarrage normal | 4 clignotements lents |
-| Paquet émis / reçu | flash court |
-| Mode bind | clignotement rapide |
-| Bind réussi | fixe jusqu'au redémarrage |
+| Normal boot | 4 slow blinks |
+| Packet sent / received | short flash |
+| Bind mode | fast blinking |
+| Bind successful | solid until reboot |
 
-**Bind :** mettre sous tension les deux modules avec M1 à la masse. Ils s'échangent leurs
-identifiants, enregistrent un numéro de réseau commun en EEPROM, puis la LED reste fixe.
-Redémarrer les deux modules.
+**Button bind:** power up both modules with M1 held to GND. They exchange their IDs, store a
+common network number in EEPROM, then the LED stays solid. Reboot both modules.
 
-**Bind par logiciel :** envoyer `+++BIND` seul (sans retour à la ligne) sur l'UART des deux
-modules, à moins de 60 s d'écart. Chacun répond `BIND OK - NET xxxx` et repart directement
-sur le nouveau réseau, sans redémarrage. Sans réponse en 60 s : `BIND : abandon`, l'ancien
-réseau est conservé.
+**Software bind:** send `+++BIND` on its own (no line ending) to the UART of both modules,
+less than 60 s apart. Each replies `BIND OK - NET xxxx` and switches to the new network
+immediately, no reboot needed. With no answer within 60 s it prints `BIND : abandon` and
+keeps its previous network.
 
-## Alimentation
+## Power supply
 
-Les pics de courant en émission (≈ 120 mA pour le T20, ≈ 500 mA ou plus pour le T30)
-dépassent ce que fournit la sortie 3,3 V de nombreux adaptateurs USB-série (CP2102
-notamment) : le module redémarre et le port USB décroche. Alimenter le module en 5 V
-(broche 5V de l'adaptateur pour le T20, alimentation ≥ 1 A pour le T30), masse commune,
-avec un condensateur de 100 à 470 µF près de VCC.
+Transmit current peaks (≈ 120 mA for the T20, ≈ 500 mA or more for the T30) exceed what the
+3.3 V output of many USB-serial adapters can deliver (the CP2102 in particular): the module
+resets and the USB port drops. Power the module from 5 V (the adapter's 5V pin for the T20,
+a supply of at least 1 A for the T30), with a common ground and a 100–470 µF capacitor close
+to VCC.
 
-## Compilation
+## Building
 
-[SDCC](https://sdcc.sourceforge.net/) 4.5 :
+[SDCC](https://sdcc.sourceforge.net/) 4.5:
 
 ```
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c                    # E32-868T30
-sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o modem_t20.ihx main.c   # E32-868T20
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -o modem.ihx main.c                                 # E32-868T30
+sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -o modem_t20.ihx main.c                 # E32-868T20
 sdcc -mstm8 --opt-code-size --out-fmt-ihx -DMODEL_T20 -DBAND_433 -o modem_433t20.ihx main.c   # E32-433T20
 ```
 
-## Flashage (ST-Link V2, SWIM)
+## Flashing (ST-Link V2, SWIM)
 
-Câblage : SWIM et RST sur les deux petits pads du module, plus GND et 3,3 V.
+Wiring: SWIM and RST on the two small pads of the module, plus GND and 3.3 V.
 
 ```
 openocd -f interface/stlink.cfg -c "adapter speed 363" -f target/stm8l.cfg \
@@ -71,23 +77,27 @@ openocd -f interface/stlink.cfg -c "adapter speed 363" -f target/stm8l.cfg \
   -c "init; halt; load_image modem.ihx; reset run; shutdown"
 ```
 
-Les deux modules doivent avoir la même version du firmware. Un T20 et un T30 peuvent
-communiquer ensemble : seule la puissance change. Un module 433 ne communique pas avec un
-module 868.
+Flashing succeeded only if the output ends with `shutdown command invoked`. On a module still
+running its factory firmware, the first attempt often stops after `target halted`: just run
+it again.
 
-## Fichiers
+Both modules of a pair must run the same firmware version. A T20 and a T30 on the same band
+can talk to each other (only the power differs). A 433 module cannot talk to an 868 module.
 
-- `main.c` — firmware du modem
-- `modem.ihx` — image compilée pour le T30
-- `modem_t20.ihx` — image compilée pour le 868T20
-- `modem_433t20.ihx` — image compilée pour le 433T20
-- `uartprobe.c` — firmware de test pour trouver les broches UART
-- `tools/stress.ps1` — test de charge entre deux ports COM (PowerShell)
+## Files
 
-## Limites
+- `main.c` — modem firmware
+- `modem.ihx` — compiled image for the 868T30
+- `modem_t20.ihx` — compiled image for the 868T20
+- `modem_433t20.ihx` — compiled image for the 433T20
+- `uartprobe.c` — test firmware used to find the UART pins
+- `tools/stress.ps1` — stress test between two COM ports (PowerShell)
 
-- Le firmware ne fait pas respecter la limite de 10 % du temps d'émission.
-- Deux rafales simultanées dans les deux sens dépassent le débit radio : utiliser le
-  contrôle de flux (AUX → CTS) ou limiter le débit côté PC.
-- Brochage déduit du firmware d'origine d'un T30 ; AUX sur PD0 non vérifié. Le brochage
-  du T20 est supposé identique.
+## Limitations
+
+- The firmware does not enforce the 10 % duty-cycle limit.
+- The 433T20 image transmits at 100 mW, above the 10 mW European limit for the 433 MHz band.
+- Two simultaneous bursts in both directions exceed the radio throughput: use flow control
+  (AUX → CTS) or throttle the data rate on the host side.
+- The pinout was derived from a T30's factory firmware; AUX on PD0 is not verified. The
+  868T20 and 433T20 work with the same pinout.
